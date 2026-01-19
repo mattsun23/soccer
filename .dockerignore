@@ -14,3 +14,7 @@ build
 .idea
 *.log
 .DS_Store
+.env
+*.md
+README.md
+DEPLOYMENT.md
