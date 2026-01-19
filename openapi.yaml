@@ -1,0 +1,263 @@
+openapi: 3.0.3
+info:
+  title: Fubo Retention Email API
+  description: AI-powered retention email system using WatsonX LLM for personalized customer communications
+  version: 1.0.0
+  contact:
+    name: Fubo API Support
+    email: matt.acosta@ibm.com
+
+servers:
+  - url: http://localhost:8001
+    description: Local development server
+  - url: https://your-production-url.com
+    description: Production server
+
+tags:
+  - name: Health
+    description: Health check and status endpoints
+  - name: Email Operations
+    description: Retention email sending operations
+
+paths:
+  /:
+    get:
+      summary: Root endpoint
+      description: Returns API information and available endpoints
+      operationId: getRoot
+      tags:
+        - Health
+      responses:
+        '200':
+          description: API information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Fubo Retention Email API
+                  endpoints:
+                    type: object
+                    properties:
+                      health:
+                        type: string
+                        example: /health
+                      send_batch:
+                        type: string
+                        example: POST /send-retention-emails
+                      send_single:
+                        type: string
+                        example: POST /send-single-email/{user_id}
+
+  /health:
+    get:
+      summary: Health check
+      description: Check API health and configuration status
+      operationId: healthCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  watsonx_configured:
+                    type: boolean
+                    description: Whether WatsonX credentials are configured
+                  resend_configured:
+                    type: boolean
+                    description: Whether Resend API key is configured
+
+  /send-retention-emails:
+    post:
+      summary: Send batch retention emails
+      description: |
+        Main workflow endpoint that:
+        1. Fetches all users from the API
+        2. Fetches all available shows
+        3. Generates personalized emails using WatsonX LLM for each user
+        4. Sends emails via Resend API
+        
+        Returns a summary of all sent emails with their status.
+      operationId: sendRetentionEmails
+      tags:
+        - Email Operations
+      responses:
+        '200':
+          description: Batch email operation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchEmailResponse'
+        '404':
+          description: No users or shows found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /send-single-email/{user_email}:
+    post:
+      summary: Send retention email to single user
+      description: |
+        Send a personalized retention email to a specific user by their email address.
+        Useful for testing or manual triggers.
+      operationId: sendSingleEmail
+      tags:
+        - Email Operations
+      parameters:
+        - name: user_email
+          in: path
+          required: true
+          description: Email address of the user to send retention email to
+          schema:
+            type: string
+            format: email
+            example: john.doe@example.com
+      responses:
+        '200':
+          description: Email sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_email:
+                    type: string
+                    format: email
+                    description: Email address of the recipient
+                  user_name:
+                    type: string
+                    description: Name of the user
+                  status:
+                    type: string
+                    enum: [sent, failed]
+                    description: Status of the email send operation
+                  email_id:
+                    type: string
+                    nullable: true
+                    description: Resend API email ID if successful
+                  email_content:
+                    type: string
+                    description: Full HTML content of the sent email
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    EmailResult:
+      type: object
+      required:
+        - user_email
+        - user_name
+        - status
+        - email_preview
+      properties:
+        user_email:
+          type: string
+          format: email
+          description: Email address of the recipient
+          example: john.doe@example.com
+        user_name:
+          type: string
+          description: Name of the user
+          example: John Doe
+        status:
+          type: string
+          enum: [sent, failed, error]
+          description: Status of the email send operation
+          example: sent
+        email_id:
+          type: string
+          nullable: true
+          description: Resend API email ID if successful
+          example: 550e8400-e29b-41d4-a716-446655440000
+        email_preview:
+          type: string
+          description: Preview of the email content (first 200 characters)
+          example: <html><body><p>Dear John Doe...</p></body></html>...
+
+    BatchEmailResponse:
+      type: object
+      required:
+        - total_users
+        - total_sent
+        - results
+      properties:
+        total_users:
+          type: integer
+          description: Total number of users processed
+          example: 10
+        total_sent:
+          type: integer
+          description: Number of emails successfully sent
+          example: 8
+        results:
+          type: array
+          description: Detailed results for each user
+          items:
+            $ref: '#/components/schemas/EmailResult'
+
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: Error message describing what went wrong
+          example: Failed to fetch users from API
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication (if required in future)
+
+security: []
+
+x-ibm-configuration:
+  enforced: true
+  testable: true
+  phase: realized
+  cors:
+    enabled: true
+  assembly:
+    execute:
+      - invoke:
+          target-url: $(target-url)$(request.path)
+          timeout: 60
+          verb: keep
+          cache-response: protocol
+          cache-ttl: 900
+  properties:
+    target-url:
+      value: http://localhost:8001
+      description: Base URL of the Fubo Retention Email API
+      encoded: false
+
+# Made with Bob
+
