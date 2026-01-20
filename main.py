@@ -168,7 +168,7 @@ def send_email(to_email: str, subject: str, html_message: str) -> dict:
         response = requests.post(
             "https://api.resend.com/emails",
             json={
-                "from": "onboarding@resend.dev",
+                "from": "noreply@sunheart.tech",
                 "to": [to_email],
                 "subject": subject,
                 "html": html_message
