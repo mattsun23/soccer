@@ -184,6 +184,7 @@ def send_email(to_email: str, subject: str, html_message: str) -> dict:
     except Exception as e:
         return {"error": str(e)}
 
+#making major changes
 
 @app.get("/")
 async def root():

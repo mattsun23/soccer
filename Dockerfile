@@ -16,6 +16,8 @@ COPY main.py .
 # Expose port (Railway will set PORT env variable)
 EXPOSE 8000
 
-# Run the application
-# Railway/Code Engine sets PORT env variable, default to 8000
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Run the application with explicit port binding
+# Use shell form to ensure PORT variable is expanded
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+
+#making major changes 
